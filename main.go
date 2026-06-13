@@ -8,28 +8,30 @@ import (
 	"log"
 	"net/http"
 	"net/mail"
+	"os"
 	"time"
 
-	"github.com/golang-jwt/jwt"
-	"golang.org/x/crypto/bcrypt"
-
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	"golang.org/x/crypto/bcrypt"
 )
 
-var Db *sql.DB //created outside to make it global.
-var jwtSecretKey = []byte("jwt-secret-key")
+var Db *sql.DB
+var jwtSecretKey []byte
 
 func ConnectDatabase() {
-	host := "localhost"
-	port := 5432
-	user := "postgres"
-	dbname := "goddit"
-	pass := "postgres"
+	psqlSetup := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=disable",
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_PORT"),
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_NAME"),
+		os.Getenv("DB_PASSWORD"),
+	)
 
-	psqlSetup := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=disable",
-		host, port, user, dbname, pass)
+	// host, port, user, dbname, pass)
 	db, errSql := sql.Open("postgres", psqlSetup)
 	if errSql != nil {
 		log.Println("There is an error while connecting to the database ", errSql)
@@ -103,6 +105,12 @@ type UserLoginJSON struct {
 }
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found")
+	}
+
+	jwtSecretKey = []byte(os.Getenv("JWT_SECRET_KEY"))
+
 	router := gin.Default()
 	ConnectDatabase()
 
