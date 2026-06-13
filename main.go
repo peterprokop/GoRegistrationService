@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/mail"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -18,7 +19,7 @@ import (
 )
 
 var Db *sql.DB //created outside to make it global.
-var jwtSecretKey = []byte("secret-key")
+var jwtSecretKey = []byte("jwt-secret-key")
 
 func ConnectDatabase() {
 	host := "localhost"
@@ -70,12 +71,23 @@ func verifyJWTToken(tokenString string) error {
 	return nil
 }
 
+func verifyEmail(email string) bool {
+	_, err := mail.ParseAddress(email)
+	return err == nil
+}
+
 type User struct {
 	id       uuid.UUID
 	email    sql.NullString
 	name     sql.NullString
 	password string
 }
+
+const minPasswordLength int = 7
+const maxPasswordLength int = 32
+
+const minUsernameLength int = 2
+const maxUsernameLength int = 32
 
 // For POST /user/register/ endpoint
 type UserRegisterJSON struct {
@@ -111,9 +123,29 @@ func main() {
 			return
 		}
 
-		// TODO: verify username
-		// TODO: verify email
-		// TODO: verify password
+		if len(user.Username) > maxUsernameLength || len(user.Username) < minUsernameLength {
+			log.Println("Invalid user name: " + user.Username)
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"message": "Invalid user name",
+			})
+			return
+		}
+
+		if !verifyEmail(user.Email) {
+			log.Println("Invalid email: " + user.Email)
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"message": "Invalid email",
+			})
+			return
+		}
+
+		if len(user.Password) > maxPasswordLength || len(user.Password) < minPasswordLength {
+			log.Println("Invalid password: " + user.Password)
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"message": "Invalid password",
+			})
+			return
+		}
 
 		// 12 should be reasonable cost for now
 		hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), 12)
@@ -133,7 +165,9 @@ func main() {
 			log.Println(err)
 			ctx.AbortWithStatusJSON(400, "Couldn't create the new user.")
 		} else {
-			ctx.JSON(http.StatusOK, "User is successfully created.")
+			ctx.JSON(http.StatusOK, gin.H{
+				"message": "User is successfully created",
+			})
 		}
 	})
 
@@ -197,6 +231,7 @@ func main() {
 		rows, err := Db.Query("SELECT * FROM users")
 		if err != nil {
 			ctx.String(http.StatusInternalServerError, "Db error")
+			return
 		}
 		defer rows.Close()
 
