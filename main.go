@@ -118,7 +118,7 @@ func main() {
 		byteValue, err := io.ReadAll(ctx.Request.Body)
 		if err != nil {
 			log.Println(err)
-			ctx.AbortWithStatusJSON(400, "Couldn't create the new user.")
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, "Couldn't create the new user.")
 			return
 		}
 
@@ -127,7 +127,7 @@ func main() {
 		err = json.Unmarshal(byteValue, &user)
 		if err != nil {
 			log.Println(err)
-			ctx.AbortWithStatusJSON(400, "Couldn't create the new user.")
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, "Couldn't create the new user.")
 			return
 		}
 
@@ -159,7 +159,7 @@ func main() {
 		hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), 12)
 		if err != nil {
 			log.Println(err)
-			ctx.AbortWithStatusJSON(400, "Couldn't create the new user.")
+			ctx.AbortWithStatusJSON(http.StatusInternalServerError, "Couldn't create the new user.")
 			return
 		}
 
@@ -171,7 +171,7 @@ func main() {
 
 		if err != nil {
 			log.Println(err)
-			ctx.AbortWithStatusJSON(400, "Couldn't create the new user.")
+			ctx.AbortWithStatusJSON(http.StatusInternalServerError, "Couldn't create the new user.")
 		} else {
 			ctx.JSON(http.StatusOK, gin.H{
 				"message": "User is successfully created",
@@ -184,7 +184,7 @@ func main() {
 		byteValue, err := io.ReadAll(ctx.Request.Body)
 		if err != nil {
 			log.Println(err)
-			ctx.AbortWithStatusJSON(400, errorMessage)
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, errorMessage)
 			return
 		}
 
@@ -193,7 +193,7 @@ func main() {
 		err = json.Unmarshal(byteValue, &user)
 		if err != nil {
 			log.Println(err)
-			ctx.AbortWithStatusJSON(400, errorMessage)
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, errorMessage)
 			return
 		}
 
@@ -201,7 +201,7 @@ func main() {
 		err = Db.QueryRow("SELECT password FROM users WHERE name = $1", user.Username).Scan(&password)
 		if err != nil {
 			log.Println(err)
-			ctx.AbortWithStatusJSON(400, errorMessage)
+			ctx.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 			return
 		}
 
@@ -211,7 +211,7 @@ func main() {
 
 		if err != nil {
 			log.Println(err)
-			ctx.AbortWithStatusJSON(400, errorMessage)
+			ctx.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 			return
 		} else {
 			ctx.JSON(http.StatusOK, gin.H{
