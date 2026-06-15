@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -109,7 +110,12 @@ func main() {
 		log.Println("No .env file found")
 	}
 
-	jwtSecretKey = []byte(os.Getenv("JWT_SECRET_KEY"))
+	jwtSecretKeyString := os.Getenv("JWT_SECRET_KEY")
+	if jwtSecretKeyString == "" {
+		panic(errors.New("No JWT secret in environment"))
+	}
+
+	jwtSecretKey = []byte(jwtSecretKeyString)
 
 	router := gin.Default()
 	ConnectDatabase()
@@ -253,6 +259,7 @@ func main() {
 				panic(err)
 			}
 			users = append(users, gin.H{
+				"id":    user.id,
 				"name":  user.name.String,
 				"email": user.email.String,
 			})
