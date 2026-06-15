@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/mail"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -226,8 +227,9 @@ func main() {
 		}
 	})
 
-	// Protected endpoint
-	router.GET("/user/get_all/", func(ctx *gin.Context) {
+	// Protected endpoints
+	adminRoutes := router.Group("/admin")
+	adminRoutes.Use(func(ctx *gin.Context) {
 		tokenString := ctx.GetHeader("Authorization")
 
 		if tokenString == "" {
@@ -241,32 +243,44 @@ func main() {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
-
-		rows, err := Db.Query("SELECT * FROM users")
-		if err != nil {
-			ctx.String(http.StatusInternalServerError, "Db error")
-			return
-		}
-		defer rows.Close()
-
-		users := []map[string]any{}
-
-		for rows.Next() {
-			var user User
-			if err := rows.Scan(&user.id, &user.email, &user.name, &user.password); err != nil {
-				// Error handling
-				log.Println(err)
-				panic(err)
-			}
-			users = append(users, gin.H{
-				"id":    user.id,
-				"name":  user.name.String,
-				"email": user.email.String,
-			})
-		}
-
-		ctx.JSON(http.StatusOK, users)
 	})
+	{
+		adminRoutes.GET("/users/page/:page", func(ctx *gin.Context) {
+			pageSize := 50
+			page, err := strconv.Atoi(ctx.Param("page"))
+			if err != nil || page < 1 {
+				ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+					"message": "Wrong page provided",
+				})
+				return
+			}
+
+			offset := (page - 1) * pageSize
+			rows, err := Db.Query("SELECT * FROM users ORDER BY id LIMIT $1 OFFSET $2", pageSize, offset)
+			if err != nil {
+				ctx.String(http.StatusInternalServerError, "Db error")
+				return
+			}
+			defer rows.Close()
+
+			users := []map[string]any{}
+
+			for rows.Next() {
+				var user User
+				if err := rows.Scan(&user.id, &user.email, &user.name, &user.password); err != nil {
+					log.Println(err)
+					panic(err)
+				}
+				users = append(users, gin.H{
+					"id":    user.id,
+					"name":  user.name.String,
+					"email": user.email.String,
+				})
+			}
+
+			ctx.JSON(http.StatusOK, users)
+		})
+	}
 
 	router.Run(":8080")
 }
