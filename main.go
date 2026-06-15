@@ -11,10 +11,8 @@ import (
 	"net/mail"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -22,7 +20,6 @@ import (
 )
 
 var Db *sql.DB
-var jwtSecretKey []byte
 
 func ConnectDatabase() {
 	psqlSetup := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=disable",
@@ -42,37 +39,6 @@ func ConnectDatabase() {
 		Db = db
 		log.Println("Successfully connected to database!")
 	}
-}
-
-func createJWTToken(username string) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
-		jwt.MapClaims{
-			"username": username,
-			"exp":      time.Now().Add(time.Hour * 24 * 7).Unix(),
-		})
-
-	tokenString, err := token.SignedString(jwtSecretKey)
-	if err != nil {
-		return "", err
-	}
-
-	return tokenString, nil
-}
-
-func verifyJWTToken(tokenString string) error {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		return jwtSecretKey, nil
-	})
-
-	if err != nil {
-		return err
-	}
-
-	if !token.Valid {
-		return fmt.Errorf("invalid token")
-	}
-
-	return nil
 }
 
 func verifyEmail(email string) bool {
